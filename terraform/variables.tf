@@ -63,7 +63,7 @@ variable "authorized_ip_ranges" {
 variable "kubernetes_version" {
   description = "Version de Kubernetes pour le cluster AKS"
   type        = string
-  default     = "1.28"
+  default     = "1.31"
 }
 
 variable "node_count" {
