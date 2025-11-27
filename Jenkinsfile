@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        // Références aux credentials Jenkins (IDs à créer dans Jenkins)
         ARM_CLIENT_ID       = credentials('azure-client-id')
         ARM_CLIENT_SECRET   = credentials('azure-client-secret')
         ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
@@ -18,19 +17,59 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo '=== Récupération du code source ==='
+                echo '=== Recuperation du code source ==='
                 checkout scm
             }
         }
 
         stage('Azure Login') {
             steps {
-                echo '=== Connexion à Azure ==='
+                echo '=== Connexion a Azure ==='
                 bat '''
                     az login --service-principal -u %ARM_CLIENT_ID% -p %ARM_CLIENT_SECRET% --tenant %ARM_TENANT_ID%
                     az account set --subscription %ARM_SUBSCRIPTION_ID%
                     az account show
                 '''
+            }
+        }
+
+        stage('Create tfvars') {
+            steps {
+                echo '=== Creation du fichier terraform.tfvars ==='
+                dir('terraform') {
+                    bat '''
+                        (
+                        echo project_name = "jenkins-aks"
+                        echo environment  = "dev"
+                        echo location     = "switzerlandnorth"
+                        echo.
+                        echo tags = {
+                        echo   Owner       = "Pierre"
+                        echo   Project     = "Jenkins-AKS-Pipeline"
+                        echo   Environment = "dev"
+                        echo   ManagedBy   = "Terraform"
+                        echo }
+                        echo.
+                        echo vnet_address_space  = ["10.0.0.0/16"]
+                        echo subnet_nodes_prefix = "10.0.1.0/24"
+                        echo subnet_pods_prefix  = "10.0.2.0/24"
+                        echo authorized_ip_ranges = ["88.172.4.67/32"]
+                        echo.
+                        echo kubernetes_version   = "1.28"
+                        echo node_count           = 2
+                        echo node_vm_size         = "Standard_DS2_v2"
+                        echo node_min_count       = 1
+                        echo node_max_count       = 5
+                        echo node_os_disk_size_gb = 50
+                        echo.
+                        echo key_vault_sku              = "standard"
+                        echo soft_delete_retention_days = 30
+                        echo.
+                        echo log_analytics_sku  = "PerGB2018"
+                        echo log_retention_days = 30
+                        ) > terraform.tfvars
+                    '''
+                }
             }
         }
 
@@ -54,7 +93,7 @@ pipeline {
 
         stage('Terraform Plan') {
             steps {
-                echo '=== Génération du plan Terraform ==='
+                echo '=== Generation du plan Terraform ==='
                 dir('terraform') {
                     bat 'terraform plan -out=tfplan'
                 }
@@ -64,13 +103,13 @@ pipeline {
         stage('Approval') {
             steps {
                 echo '=== Attente de validation manuelle ==='
-                input message: 'Voulez-vous déployer cette infrastructure ?', ok: 'Déployer'
+                input message: 'Voulez-vous deployer cette infrastructure ?', ok: 'Deployer'
             }
         }
 
         stage('Terraform Apply') {
             steps {
-                echo '=== Déploiement de l\'infrastructure ==='
+                echo '=== Deploiement de infrastructure ==='
                 dir('terraform') {
                     bat 'terraform apply -auto-approve tfplan'
                 }
@@ -79,7 +118,7 @@ pipeline {
 
         stage('Get Cluster Info') {
             steps {
-                echo '=== Informations du cluster déployé ==='
+                echo '=== Informations du cluster deploye ==='
                 dir('terraform') {
                     bat 'terraform output'
                 }
@@ -89,14 +128,14 @@ pipeline {
 
     post {
         always {
-            echo '=== Déconnexion Azure ==='
+            echo '=== Deconnexion Azure ==='
             bat 'az logout || exit 0'
         }
         success {
-            echo '=== Pipeline terminé avec succès ==='
+            echo '=== Pipeline termine avec succes ==='
         }
         failure {
-            echo '=== Pipeline en échec ==='
+            echo '=== Pipeline en echec ==='
         }
     }
 }
