@@ -2,8 +2,6 @@
 
 Projet de déploiement automatique d'un cluster Kubernetes (AKS) sur Azure avec Jenkins et Terraform.
 
-## C'est quoi ce projet ?
-
 Un pipeline Jenkins qui déploie automatiquement :
 - Un cluster Kubernetes sur Azure (AKS)
 - Un réseau virtuel sécurisé
