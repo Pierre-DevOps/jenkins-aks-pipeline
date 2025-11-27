@@ -1,38 +1,35 @@
-# ===========================================
-# DATA SOURCES
-# ===========================================
+# =============================================================================
+# MAIN.TF - Ressources Azure pour AKS
+# =============================================================================
 
+# -----------------------------------------------------------------------------
+# Data Sources
+# -----------------------------------------------------------------------------
 data "azurerm_client_config" "current" {}
 
-# ===========================================
-# RESOURCE GROUP
-# ===========================================
-
+# -----------------------------------------------------------------------------
+# Resource Group
+# -----------------------------------------------------------------------------
 resource "azurerm_resource_group" "main" {
   name     = "rg-${var.project_name}-${var.environment}"
   location = var.location
-
-  tags = merge(var.tags, {
-    Project     = var.project_name
-    Environment = var.environment
-    ManagedBy   = "Terraform"
-  })
+  tags     = var.tags
 }
 
-# ===========================================
-# VIRTUAL NETWORK
-# ===========================================
-
+# -----------------------------------------------------------------------------
+# Virtual Network
+# -----------------------------------------------------------------------------
 resource "azurerm_virtual_network" "main" {
   name                = "vnet-${var.project_name}-${var.environment}"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
   address_space       = var.vnet_address_space
-
-  tags = azurerm_resource_group.main.tags
+  tags                = var.tags
 }
 
-# Subnet pour les nodes AKS
+# -----------------------------------------------------------------------------
+# Subnets
+# -----------------------------------------------------------------------------
 resource "azurerm_subnet" "nodes" {
   name                 = "snet-nodes"
   resource_group_name  = azurerm_resource_group.main.name
@@ -40,7 +37,6 @@ resource "azurerm_subnet" "nodes" {
   address_prefixes     = [var.subnet_nodes_prefix]
 }
 
-# Subnet pour les pods AKS (Azure CNI)
 resource "azurerm_subnet" "pods" {
   name                 = "snet-pods"
   resource_group_name  = azurerm_resource_group.main.name
@@ -50,20 +46,22 @@ resource "azurerm_subnet" "pods" {
   delegation {
     name = "aks-delegation"
     service_delegation {
-      name    = "Microsoft.ContainerService/managedClusters"
-      actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+      name = "Microsoft.ContainerService/managedClusters"
+      actions = [
+        "Microsoft.Network/virtualNetworks/subnets/join/action"
+      ]
     }
   }
 }
 
-# ===========================================
-# NETWORK SECURITY GROUP
-# ===========================================
-
+# -----------------------------------------------------------------------------
+# Network Security Group
+# -----------------------------------------------------------------------------
 resource "azurerm_network_security_group" "aks" {
   name                = "nsg-aks-${var.project_name}-${var.environment}"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
+  tags                = var.tags
 
   security_rule {
     name                       = "DenyAllInbound"
@@ -124,8 +122,6 @@ resource "azurerm_network_security_group" "aks" {
     source_address_prefix      = "AzureLoadBalancer"
     destination_address_prefix = "*"
   }
-
-  tags = azurerm_resource_group.main.tags
 }
 
 resource "azurerm_subnet_network_security_group_association" "nodes" {
@@ -133,24 +129,21 @@ resource "azurerm_subnet_network_security_group_association" "nodes" {
   network_security_group_id = azurerm_network_security_group.aks.id
 }
 
-# ===========================================
-# LOG ANALYTICS WORKSPACE
-# ===========================================
-
+# -----------------------------------------------------------------------------
+# Log Analytics Workspace
+# -----------------------------------------------------------------------------
 resource "azurerm_log_analytics_workspace" "main" {
   name                = "law-${var.project_name}-${var.environment}"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
   sku                 = var.log_analytics_sku
   retention_in_days   = var.log_retention_days
-
-  tags = azurerm_resource_group.main.tags
+  tags                = var.tags
 }
 
-# ===========================================
-# KEY VAULT
-# ===========================================
-
+# -----------------------------------------------------------------------------
+# Key Vault
+# -----------------------------------------------------------------------------
 resource "azurerm_key_vault" "main" {
   name                = "kv-${var.project_name}-${var.environment}"
   location            = azurerm_resource_group.main.location
@@ -160,23 +153,16 @@ resource "azurerm_key_vault" "main" {
 
   soft_delete_retention_days = var.soft_delete_retention_days
   purge_protection_enabled   = true
-
-  enable_rbac_authorization = true
+  enable_rbac_authorization  = true
 
   public_network_access_enabled = true
 
-  network_acls {
-    default_action = "Allow"
-    bypass         = "AzureServices"
-  }
-
-  tags = azurerm_resource_group.main.tags
+  tags = var.tags
 }
 
-# ===========================================
-# AKS CLUSTER
-# ===========================================
-
+# -----------------------------------------------------------------------------
+# AKS Cluster
+# -----------------------------------------------------------------------------
 resource "azurerm_kubernetes_cluster" "main" {
   name                = "aks-${var.project_name}-${var.environment}"
   location            = azurerm_resource_group.main.location
@@ -184,31 +170,41 @@ resource "azurerm_kubernetes_cluster" "main" {
   dns_prefix          = "${var.project_name}-${var.environment}"
   kubernetes_version  = var.kubernetes_version
 
-  identity {
-    type = "SystemAssigned"
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+    Owner       = "Pierre"
   }
 
   default_node_pool {
     name                = "default"
+    node_count          = var.node_count
     vm_size             = var.node_vm_size
     os_disk_size_gb     = var.node_os_disk_size_gb
     vnet_subnet_id      = azurerm_subnet.nodes.id
     pod_subnet_id       = azurerm_subnet.pods.id
-
     enable_auto_scaling = true
-    node_count          = var.node_count
     min_count           = var.node_min_count
     max_count           = var.node_max_count
+    tags = {
+      Environment = var.environment
+      Project     = var.project_name
+      ManagedBy   = "Terraform"
+      Owner       = "Pierre"
+    }
+  }
 
-    tags = azurerm_resource_group.main.tags
+  identity {
+    type = "SystemAssigned"
   }
 
   network_profile {
-    network_plugin    = "azure"
-    network_policy    = "azure"
-    load_balancer_sku = "standard"
-    service_cidr      = "10.1.0.0/16"
-    dns_service_ip    = "10.1.0.10"
+    network_plugin     = "azure"
+    network_policy     = "azure"
+    load_balancer_sku  = "standard"
+    service_cidr       = "10.1.0.0/16"
+    dns_service_ip     = "10.1.0.10"
   }
 
   api_server_access_profile {
@@ -232,22 +228,5 @@ resource "azurerm_kubernetes_cluster" "main" {
   key_vault_secrets_provider {
     secret_rotation_enabled = true
   }
-
-  tags = azurerm_resource_group.main.tags
 }
-
-# ===========================================
-# ROLE ASSIGNMENTS
-# ===========================================
-
-resource "azurerm_role_assignment" "aks_network" {
-  scope                = azurerm_virtual_network.main.id
-  role_definition_name = "Network Contributor"
-  principal_id         = azurerm_kubernetes_cluster.main.identity[0].principal_id
-}
-
-resource "azurerm_role_assignment" "aks_keyvault" {
-  scope                = azurerm_key_vault.main.id
-  role_definition_name = "Key Vault Secrets User"
-  principal_id         = azurerm_kubernetes_cluster.main.key_vault_secrets_provider[0].secret_identity[0].object_id
-}
+  
