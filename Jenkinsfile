@@ -55,7 +55,7 @@ pipeline {
                         echo subnet_pods_prefix  = "10.0.2.0/24"
                         echo authorized_ip_ranges = ["88.172.4.67/32"]
                         echo.
-                        echo kubernetes_version   = "1.28"
+                        echo kubernetes_version   = "1.30"
                         echo node_count           = 2
                         echo node_vm_size         = "Standard_DS2_v2"
                         echo node_min_count       = 1
