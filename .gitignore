@@ -1,0 +1,48 @@
+# ===========================================
+# FICHIERS SENSIBLES - A NE JAMAIS COMMITER
+# ===========================================
+
+# Terraform - fichiers avec secrets potentiels
+*.tfvars
+*.tfvars.json
+terraform.tfvars
+*.auto.tfvars
+
+# Terraform - fichiers générés
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+
+# ===========================================
+# FICHIERS SYSTEME
+# ===========================================
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# ===========================================
+# SECRETS ET CREDENTIALS
+# ===========================================
+
+# Clés et certificats
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Fichiers de secrets
+*secret*
+*credential*
+.env
+.env.*
