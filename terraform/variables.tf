@@ -75,7 +75,7 @@ variable "node_count" {
 variable "node_vm_size" {
   description = "Taille des VMs pour les nodes AKS"
   type        = string
-  default     = "Standard_DS2_v2"
+  default     = "Standard_B2s"
 }
 
 variable "node_min_count" {

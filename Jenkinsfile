@@ -57,7 +57,7 @@ pipeline {
                         echo.
                         echo kubernetes_version   = "1.31"
                         echo node_count           = 2
-                        echo node_vm_size         = "Standard_DS2_v2"
+                        echo node_vm_size         = "Standard_B2s"
                         echo node_min_count       = 1
                         echo node_max_count       = 5
                         echo node_os_disk_size_gb = 50
